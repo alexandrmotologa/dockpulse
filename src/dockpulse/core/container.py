@@ -97,8 +97,23 @@ class ContainerModel(BaseModel):
         return "none"
 
     @property
+    def is_oom_killed(self) -> bool:
+        """Check if container died due to Out of Memory (exit code 137 or OOM marker)."""
+        status_lower = self.status.lower()
+        return "137" in status_lower or "oom" in status_lower
+
+    @property
+    def is_crash_loop(self) -> bool:
+        """Check if container is flapping or restarting repeatedly."""
+        return self.is_restarting or "restarting" in self.status.lower()
+
+    @property
     def status_badge(self) -> str:
-        """Visual status emoji or badge."""
+        """Visual status emoji or badge with watchdog anomalies."""
+        if self.is_oom_killed:
+            return "💀 oom_killed"
+        if self.is_crash_loop:
+            return "⚠️ crash_loop"
         if self.is_running:
             if self.health_status == "unhealthy":
                 return "🔴 unhealthy"
@@ -110,6 +125,39 @@ class ContainerModel(BaseModel):
         if self.is_restarting:
             return "🔄 restarting"
         return "🔴 exited"
+
+    @property
+    def web_url(self) -> str | None:
+        """HTTP or HTTPS web URL for exposed public services."""
+        for p in self.ports:
+            if p.public_port:
+                if p.public_port == 443 or p.private_port == 443:
+                    return f"https://localhost:{p.public_port}"
+                if p.public_port in (80, 8080, 8000, 3000, 5173, 8081, 9090, 16686):
+                    return f"http://localhost:{p.public_port}"
+
+        # Fallback to first public port
+        for p in self.ports:
+            if p.public_port:
+                return f"http://localhost:{p.public_port}"
+        return None
+
+    @property
+    def connection_info(self) -> str:
+        """Formatted connection URI or shell exec command."""
+        img_lower = self.image.lower()
+        first_port = next((p.public_port for p in self.ports if p.public_port), None)
+        if "postgres" in img_lower and first_port:
+            return f"postgresql://postgres:postgres@localhost:{first_port}/dbname"
+        if "redis" in img_lower and first_port:
+            return f"redis://localhost:{first_port}"
+        if "mysql" in img_lower and first_port:
+            return f"mysql://root:password@127.0.0.1:{first_port}/dbname"
+        if "mongo" in img_lower and first_port:
+            return f"mongodb://localhost:{first_port}"
+        if first_port:
+            return f"http://localhost:{first_port}"
+        return f"docker exec -it {self.primary_name} sh"
 
     @property
     def ports_summary(self) -> str:

@@ -1,0 +1,11 @@
+# DockPulse configuration file
+
+[ui]
+# Available themes: default, tokyo_night, catppuccin, dracula, nord
+theme = "default"
+show_timestamps = true
+log_tail_lines = 100
+
+[shell]
+# Default command when launching container shell
+command = "sh"

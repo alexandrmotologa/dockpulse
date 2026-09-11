@@ -12,9 +12,12 @@ High-speed, keyboard-driven terminal dashboard and CLI tool for Docker and Docke
 
 - **Direct socket transport**: Connects to Windows Named Pipes (`\\.\pipe\docker_engine`), Unix Domain Sockets (`/var/run/docker.sock`), or remote TCP endpoints without requiring third-party bridge agents.
 - **Compose project hierarchy**: Groups microservice containers by `com.docker.compose.project`, displaying status badges, service names, and replica counts.
-- **Live resource sparklines**: Rolling metrics for CPU percentage across cores, memory RSS, network I/O rates, and block storage operations.
-- **Demultiplexed log streaming**: Reads Docker 8-byte framing headers, separating stdout and stderr streams with timestamp normalization and search filtering (`/`).
-- **One-key container actions**: Restart (`r`), stop (`s`), pause/unpause (`p`), or remove (`x`) containers directly from the HUD.
+- **Stack-level operations**: Restart (`Shift+R`) or stop (`Shift+S`) entire Compose project groups simultaneously.
+- **Live resource sparklines & watchdog**: Rolling metrics for CPU %, memory RSS, network I/O, and block storage. Automatic detection of `OOMKilled` and `CrashLoop` states.
+- **Demultiplexed log streaming & tools**: Reads Docker 8-byte framing headers, separating stdout and stderr streams. Toggle timestamps (`t`), cycle severity filter (`l`), export logs (`Ctrl+S`), and search (`/`).
+- **Interactive utilities**: One-key web opener (`o`) for published HTTP ports, clipboard copy (`y`) for container connection strings, and interactive container shell (`e` or `Enter`).
+- **Images and volumes management**: Dedicated modal inspectors to view and delete local images (`i`) and volumes (`v`).
+- **Customizable themes**: Switch on the fly (`Shift+T`) between Slate, Tokyo Night, Catppuccin Mocha, Dracula, and Nord palettes, configurable via `dockpulse.toml`.
 - **Integrated demo mode**: Explore the entire terminal dashboard with simulated multi-service topologies without needing a running Docker daemon (`dockpulse --demo`).
 
 ---
@@ -95,8 +98,18 @@ dockpulse prune --dry-run
 | `s` | Stop highlighted container |
 | `p` | Pause or unpause highlighted container |
 | `x` | Remove stopped container |
-| `Enter` | Open container shell / command runner |
+| `Shift+R` | Restart entire Compose stack |
+| `Shift+S` | Stop entire Compose stack |
+| `o` | Open container web port in browser |
+| `y` | Copy connection string or exec command to clipboard |
+| `e` / `Enter` | Open container shell / command runner |
 | `d` | Inspect container details (ports, mounts, env) |
+| `i` | Open Docker images manager modal |
+| `v` | Open Docker volumes manager modal |
+| `Shift+T` | Open theme palette selector modal |
+| `t` | Toggle log timestamps |
+| `l` | Cycle log severity filter (ALL / ERROR / WARN / INFO / DEBUG) |
+| `Ctrl+S` | Export current log buffer to file |
 | `/` | Filter containers or search live logs |
 | `Space` | Pause or resume log scrolling |
 | `c` | Clear log buffer |

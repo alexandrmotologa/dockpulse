@@ -2,7 +2,7 @@
 
 from rich.table import Table
 from textual.app import ComposeResult
-from textual.containers import Vertical
+from textual.containers import Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Button, Static
 
@@ -16,12 +16,15 @@ class HelpModal(ModalScreen[None]):
         background: rgba(0, 0, 0, 0.7);
     }
     #help-container {
-        width: 68;
-        height: auto;
-        max-height: 85%;
+        width: 72;
+        height: 85%;
         background: #0f172a;
         border: thick #38bdf8;
         padding: 1 2;
+        layout: vertical;
+    }
+    #help-scroll {
+        height: 1fr;
     }
     #help-title {
         text-style: bold;
@@ -38,7 +41,8 @@ class HelpModal(ModalScreen[None]):
     def compose(self) -> ComposeResult:
         with Vertical(id="help-container"):
             yield Static("⚡ DockPulse — Keyboard Shortcuts", id="help-title")
-            yield Static(self._build_table())
+            with VerticalScroll(id="help-scroll"):
+                yield Static(self._build_table())
             yield Button("Close (Esc)", id="close-btn", variant="primary")
 
     def _build_table(self) -> Table:
@@ -52,8 +56,18 @@ class HelpModal(ModalScreen[None]):
         table.add_row("s", "Stop highlighted container")
         table.add_row("p", "Pause or unpause highlighted container")
         table.add_row("x", "Remove stopped container")
+        table.add_row("Shift+R", "Restart entire Compose stack")
+        table.add_row("Shift+S", "Stop entire Compose stack")
+        table.add_row("o", "Open web service in default browser")
+        table.add_row("y", "Copy connection URI / exec command to clipboard")
         table.add_row("d", "Inspect container details (ports, env, mounts)")
         table.add_row("e", "Execute command inside container")
+        table.add_row("t", "Toggle log timestamps (ISO 8601)")
+        table.add_row("l", "Cycle log severity filter (ALL, WARN+, ERROR)")
+        table.add_row("Ctrl+S", "Export logs to local .log file")
+        table.add_row("i", "Open local Images manager")
+        table.add_row("v", "Open local Volumes manager")
+        table.add_row("Shift+T", "Select and switch color theme")
         table.add_row("/", "Filter containers or search log stream")
         table.add_row("Space", "Pause or resume live log autoscroll")
         table.add_row("c", "Clear current log buffer")

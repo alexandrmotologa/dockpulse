@@ -75,6 +75,18 @@ class MockDockerTransport(httpx.AsyncBaseTransport):
         if clean_path == "/containers/json":
             return httpx.Response(200, json=self.containers)
 
+        # Prune containers
+        if "prune" in clean_path and method == "POST":
+            return httpx.Response(
+                200,
+                json={
+                    "ContainersDeleted": [
+                        "30a1b2c3d4e5890123456789abcdef0123456789abcdef0123456789abcdef09"
+                    ],
+                    "SpaceReclaimed": 52428800,  # 50 MB
+                },
+            )
+
         # Container operations
         if clean_path.startswith("/containers/"):
             parts = clean_path.split("/")[2:]
@@ -172,6 +184,95 @@ class MockDockerTransport(httpx.AsyncBaseTransport):
             return httpx.Response(
                 200, content=frame, headers={"content-type": "application/vnd.docker.raw-stream"}
             )
+
+        # Images list & removal
+        if clean_path == "/images/json" and method == "GET":
+            images = [
+                {
+                    "Id": "sha256:traefik300000000000000000000000000000000000000000000000000000000",
+                    "RepoTags": ["traefik:v3.0"],
+                    "Size": 44 * 1024 * 1024,
+                    "Created": int(time.time()) - 86400 * 14,
+                },
+                {
+                    "Id": "sha256:orderservice21000000000000000000000000000000000000000000000000000",
+                    "RepoTags": ["order-service:v2.1.0"],
+                    "Size": 218 * 1024 * 1024,
+                    "Created": int(time.time()) - 86400 * 2,
+                },
+                {
+                    "Id": "sha256:postgres16alpine00000000000000000000000000000000000000000000000000",
+                    "RepoTags": ["postgres:16-alpine"],
+                    "Size": 142 * 1024 * 1024,
+                    "Created": int(time.time()) - 86400 * 30,
+                },
+                {
+                    "Id": "sha256:redis72alpine0000000000000000000000000000000000000000000000000000",
+                    "RepoTags": ["redis:7.2-alpine"],
+                    "Size": 38 * 1024 * 1024,
+                    "Created": int(time.time()) - 86400 * 45,
+                },
+                {
+                    "Id": "sha256:dangling000000000000000000000000000000000000000000000000000000000",
+                    "RepoTags": ["<none>:<none>"],
+                    "Size": 184 * 1024 * 1024,
+                    "Created": int(time.time()) - 86400 * 5,
+                },
+            ]
+            return httpx.Response(200, json=images)
+
+        if clean_path.startswith("/images/") and method == "DELETE":
+            return httpx.Response(200, json=[{"Deleted": clean_path.split("/")[-1]}])
+
+        # Volumes list & removal
+        if clean_path == "/volumes" and method == "GET":
+            volumes = {
+                "Volumes": [
+                    {
+                        "Name": "order-platform_pgdata",
+                        "Driver": "local",
+                        "Mountpoint": "/var/lib/docker/volumes/order-platform_pgdata/_data",
+                        "UsageData": {"Size": 412 * 1024 * 1024, "RefCount": 1},
+                    },
+                    {
+                        "Name": "order-platform_redisdata",
+                        "Driver": "local",
+                        "Mountpoint": "/var/lib/docker/volumes/order-platform_redisdata/_data",
+                        "UsageData": {"Size": 18 * 1024 * 1024, "RefCount": 1},
+                    },
+                    {
+                        "Name": "orphan_cache_volume_1",
+                        "Driver": "local",
+                        "Mountpoint": "/var/lib/docker/volumes/orphan_cache_volume_1/_data",
+                        "UsageData": {"Size": 850 * 1024 * 1024, "RefCount": 0},
+                    },
+                ]
+            }
+            return httpx.Response(200, json=volumes)
+
+        if clean_path.startswith("/volumes/") and method == "DELETE":
+            return httpx.Response(204)
+
+        # System disk usage (/system/df)
+        if clean_path == "/system/df" and method == "GET":
+            df_data = {
+                "LayersSize": 2400000000,
+                "Images": [
+                    {"Size": 44 * 1024 * 1024, "SharedSize": 0},
+                    {"Size": 218 * 1024 * 1024, "SharedSize": 0},
+                    {"Size": 184 * 1024 * 1024, "SharedSize": 0},
+                ],
+                "Containers": [{"SizeRw": 1048576} for _ in self.containers],
+                "Volumes": [
+                    {"UsageData": {"Size": 412 * 1024 * 1024, "RefCount": 1}},
+                    {"UsageData": {"Size": 850 * 1024 * 1024, "RefCount": 0}},
+                ],
+                "BuildCache": [
+                    {"Size": 1200 * 1024 * 1024, "Reclaimable": True},
+                    {"Size": 800 * 1024 * 1024, "Reclaimable": True},
+                ],
+            }
+            return httpx.Response(200, json=df_data)
 
         # Prune endpoints
         if "prune" in clean_path and method == "POST":

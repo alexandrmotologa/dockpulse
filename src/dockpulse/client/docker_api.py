@@ -1,5 +1,6 @@
 """Asynchronous client for the Docker Engine REST API v1.43."""
 
+import asyncio
 import json
 import struct
 from collections.abc import AsyncIterator
@@ -129,6 +130,68 @@ class DockerApiClient:
         resp = await self._client.post(self._url("/containers/prune"))
         if resp.status_code != 200:
             raise DockerApiError(f"Prune failed: {resp.text}", resp.status_code)
+        return resp.json()
+
+    async def restart_compose_project(self, project_name: str) -> int:
+        """Restart all containers belonging to a Docker Compose project concurrently.
+
+        Returns:
+            Number of restarted containers.
+        """
+        all_conts = await self.list_containers(all_containers=True)
+        targets = [c for c in all_conts if c.compose_project == project_name]
+        if not targets:
+            return 0
+        tasks = [self.restart_container(c.id) for c in targets]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        return sum(1 for r in results if r is True)
+
+    async def stop_compose_project(self, project_name: str) -> int:
+        """Stop all running containers in a Docker Compose project concurrently.
+
+        Returns:
+            Number of stopped containers.
+        """
+        all_conts = await self.list_containers(all_containers=True)
+        targets = [c for c in all_conts if c.compose_project == project_name and c.is_running]
+        if not targets:
+            return 0
+        tasks = [self.stop_container(c.id) for c in targets]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        return sum(1 for r in results if r is True)
+
+    async def list_images(self) -> list[dict[str, Any]]:
+        """List local Docker images with size and repo tags."""
+        resp = await self._client.get(self._url("/images/json"))
+        if resp.status_code != 200:
+            raise DockerApiError(f"Failed to list images: {resp.text}", resp.status_code)
+        return resp.json()
+
+    async def remove_image(self, image_id: str, force: bool = False) -> bool:
+        """Remove a local Docker image."""
+        params = {"force": "1" if force else "0"}
+        resp = await self._client.delete(self._url(f"/images/{image_id}"), params=params)
+        return resp.status_code in (200, 204)
+
+    async def list_volumes(self) -> list[dict[str, Any]]:
+        """List local Docker volumes."""
+        resp = await self._client.get(self._url("/volumes"))
+        if resp.status_code != 200:
+            raise DockerApiError(f"Failed to list volumes: {resp.text}", resp.status_code)
+        data = resp.json()
+        return data.get("Volumes", []) or []
+
+    async def remove_volume(self, volume_name: str, force: bool = False) -> bool:
+        """Remove a local Docker volume."""
+        params = {"force": "1" if force else "0"}
+        resp = await self._client.delete(self._url(f"/volumes/{volume_name}"), params=params)
+        return resp.status_code in (200, 204)
+
+    async def get_disk_usage(self) -> dict[str, Any]:
+        """Get Docker engine data usage statistics (images, containers, volumes, build cache)."""
+        resp = await self._client.get(self._url("/system/df"))
+        if resp.status_code != 200:
+            raise DockerApiError(f"Failed to get disk usage: {resp.text}", resp.status_code)
         return resp.json()
 
     async def stream_stats(self, container_id: str) -> AsyncIterator[dict[str, Any]]:

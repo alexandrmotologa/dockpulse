@@ -32,11 +32,45 @@ async def test_tui_app_lifecycle() -> None:
         logs = pilot.app.query_one(LogTailWidget)
         assert logs is not None
 
-        # Verify keyboard shortcuts (toggle logs, clear logs)
+        # Verify log controls (pause, clear, toggle timestamps, cycle severity)
         await pilot.press("space")
         await pilot.pause()
 
+        await pilot.press("t")
+        await pilot.pause()
+
+        await pilot.press("l")
+        await pilot.pause()
+
         await pilot.press("c")
+        await pilot.pause()
+
+        # Test Stack actions (Shift+R, Shift+S)
+        await pilot.press("R")
+        await pilot.pause()
+
+        await pilot.press("S")
+        await pilot.pause()
+
+        # Test Modals (Images 'i', Volumes 'v', Themes 'T', Help '?')
+        await pilot.press("i")
+        await pilot.pause()
+        await pilot.press("escape")
+        await pilot.pause()
+
+        await pilot.press("v")
+        await pilot.pause()
+        await pilot.press("escape")
+        await pilot.pause()
+
+        await pilot.press("T")
+        await pilot.pause()
+        await pilot.press("escape")
+        await pilot.pause()
+
+        await pilot.press("question_mark")
+        await pilot.pause()
+        await pilot.press("escape")
         await pilot.pause()
 
         # Exit cleanly

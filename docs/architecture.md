@@ -15,17 +15,20 @@ DockPulse connects directly to the Docker Engine REST API without running backgr
 +------------------------------------------------------------------------+
 |                             TUI Layer                                  |
 |  - Textual App (DockPulseHUD)                                          |
-|  - Container Tree Widget, Sparkline Widget, Log Streamer Widget       |
-|  - Modals: DetailModal, ShellModal, PruneModal, HelpModal              |
+|  - Container Tree Widget, Sparkline Widget, Log Streamer Widget        |
+|  - Modals: DetailModal, ShellModal, PruneModal, HelpModal,             |
+|            ImagesModal, VolumesModal, ThemeModal                       |
 +------------------------------------------------------------------------+
                                    |
                                    v
 +------------------------------------------------------------------------+
 |                             Core Layer                                 |
-|  - ContainerModel & ComposeProject (Pydantic v2)                       |
-|  - StatsStreamer (Delta CPU %, memory RSS, network I/O)                |
-|  - SparklineBuffer (Rolling time-series, Unicode sparkline rendering)   |
-|  - LogMultiplexer (8-byte Docker stream header demuxer)                |
+|  - ContainerModel & ComposeProject (Pydantic v2, OOM/CrashLoop check)  |
+|  - StatsStreamer (Delta CPU %, memory RSS, network I/O, block I/O)     |
+|  - SparklineBuffer (Rolling time-series, Unicode sparkline rendering)  |
+|  - LogMultiplexer (8-byte header demuxer, level filter, export)        |
+|  - ThemeEngine (Slate, Tokyo Night, Catppuccin, Dracula, Nord)         |
+|  - ClipboardHelper (Cross-platform clipboard provider)                 |
 +------------------------------------------------------------------------+
                                    |
                                    v

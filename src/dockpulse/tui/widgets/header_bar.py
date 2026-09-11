@@ -1,4 +1,4 @@
-"""Top system header bar widget showing daemon metadata and container counts."""
+"""Top system header bar widget showing daemon metadata, container counts, and disk reclamation."""
 
 from rich.text import Text
 from textual.app import ComposeResult
@@ -8,7 +8,7 @@ from textual.widgets import Static
 
 
 class HeaderBar(Widget):
-    """Header bar displaying Docker daemon connectivity and container inventory summary."""
+    """Header bar displaying Docker daemon connectivity, container inventory, and disk statistics."""
 
     DEFAULT_CSS = """
     HeaderBar {
@@ -43,6 +43,7 @@ class HeaderBar(Widget):
     running_count: reactive[int] = reactive(0)
     paused_count: reactive[int] = reactive(0)
     stopped_count: reactive[int] = reactive(0)
+    reclaimable_space: reactive[str] = reactive("")
 
     def compose(self) -> ComposeResult:
         yield Static("⚡ DOCKPULSE", id="brand-title")
@@ -67,6 +68,9 @@ class HeaderBar(Widget):
     def watch_stopped_count(self, value: int) -> None:
         self._update_counts()
 
+    def watch_reclaimable_space(self, value: str) -> None:
+        self._update_counts()
+
     def _update_daemon_info(self) -> None:
         static = self.query_one("#daemon-info", Static)
         text = Text()
@@ -84,6 +88,8 @@ class HeaderBar(Widget):
         if self.paused_count > 0:
             text.append(f"⏸️ {self.paused_count}  ", style="bold yellow")
         text.append(
-            f"🔴 {self.stopped_count}", style="bold red" if self.stopped_count > 0 else "dim"
+            f"🔴 {self.stopped_count}  ", style="bold red" if self.stopped_count > 0 else "dim"
         )
+        if self.reclaimable_space:
+            text.append(f"💾 Reclaimable: {self.reclaimable_space}", style="dim yellow")
         static.update(text)

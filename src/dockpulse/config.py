@@ -153,3 +153,41 @@ def _parse_socket_string(target: str, timeout: float) -> DockerConfig:
         socket_type="tcp",
         timeout=timeout,
     )
+
+
+@dataclass
+class UserPreferences:
+    """User configuration loaded from dockpulse.toml or ~/.config/dockpulse/config.toml."""
+
+    theme: str = "default"
+    log_tail_lines: int = 100
+    show_timestamps: bool = True
+    custom_shell: str = "sh"
+
+
+def load_user_preferences() -> UserPreferences:
+    """Load user preferences from local or user-level TOML configuration file."""
+    import tomllib
+
+    candidates = [
+        Path("dockpulse.toml"),
+        Path.home() / ".config" / "dockpulse" / "config.toml",
+    ]
+
+    for path in candidates:
+        if path.is_file():
+            try:
+                with open(path, "rb") as f:
+                    data = tomllib.load(f)
+                    ui = data.get("ui", {})
+                    shell = data.get("shell", {})
+                    return UserPreferences(
+                        theme=ui.get("theme", "default"),
+                        log_tail_lines=int(ui.get("log_tail_lines", 100)),
+                        show_timestamps=bool(ui.get("show_timestamps", True)),
+                        custom_shell=str(shell.get("command", "sh")),
+                    )
+            except Exception:
+                continue
+
+    return UserPreferences()

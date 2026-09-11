@@ -1,4 +1,4 @@
-"""Live telemetry dashboard panel rendering CPU and memory sparklines and I/O metrics."""
+"""Live telemetry dashboard panel rendering CPU and memory sparklines, watchdog alerts, and I/O metrics."""
 
 from rich.panel import Panel
 from rich.table import Table
@@ -13,11 +13,11 @@ from dockpulse.core.stats_streamer import ContainerStatsSnapshot
 
 
 class SparklinePanel(Widget):
-    """Panel rendering live rolling resource sparklines and telemetry."""
+    """Panel rendering live rolling resource sparklines, health alerts, and container metadata."""
 
     DEFAULT_CSS = """
     SparklinePanel {
-        height: 14;
+        height: 15;
         background: #0b1120;
         border-bottom: solid #1e293b;
         padding: 0 1;
@@ -84,8 +84,17 @@ class SparklinePanel(Widget):
         info_text = Text()
         info_text.append(f"Image: {cont.image}  ", style="dim")
         info_text.append(f"Status: {cont.status}  ", style="bold cyan")
-        if cont.ports_summary and cont.ports_summary != "-":
-            info_text.append(f"Ports: {cont.ports_summary}", style="dim yellow")
+
+        # Anomaly / Watchdog alerts
+        if cont.is_oom_killed:
+            info_text.append("💀 [OOMKilled] ", style="bold white on red")
+        elif cont.is_crash_loop:
+            info_text.append("⚠️ [CrashLoop] ", style="bold black on yellow")
+
+        if cont.web_url:
+            info_text.append(f"Web: {cont.web_url} (o)  ", style="bold green")
+        elif cont.ports_summary and cont.ports_summary != "-":
+            info_text.append(f"Ports: {cont.ports_summary}  ", style="dim yellow")
 
         # Sparklines
         cpu_spark = self._cpu_buffer.render(width=32, max_scale=100.0)
@@ -95,11 +104,16 @@ class SparklinePanel(Widget):
         cpu_avg = self._cpu_buffer.avg_val
         cpu_max = self._cpu_buffer.max_val
 
+        # Sparkline dynamic colors based on thresholds
+        cpu_color = "red" if cpu_val >= 90.0 else ("yellow" if cpu_val >= 80.0 else "green")
+        mem_val = self._latest_stats.memory_percent if self._latest_stats else 0.0
+        mem_color = "red" if mem_val >= 90.0 else ("yellow" if mem_val >= 80.0 else "cyan")
+
         mem_display = (
             self._latest_stats.memory_display if self._latest_stats else "0 B / 0 B (0.0%)"
         )
         net_display = (
-            self._latest_stats.network_display if self._latest_stats else "▼ 0 B/s  ▲ 0 B/s"
+            self._latest_stats.network_display if self._latest_stats else "v 0 B/s  ^ 0 B/s"
         )
         io_display = self._latest_stats.block_io_display if self._latest_stats else "R: 0 B  W: 0 B"
 
@@ -110,23 +124,34 @@ class SparklinePanel(Widget):
 
         # CPU row
         cpu_metrics = f"Cur: [bold cyan]{cpu_val:5.1f}%[/]  Avg: [dim]{cpu_avg:5.1f}%[/]  Max: [dim red]{cpu_max:5.1f}%[/]"
-        table.add_row("CPU Usage", f"[bold green]{cpu_spark}[/]", cpu_metrics)
+        if cpu_val >= 90.0:
+            cpu_metrics += " [bold red]!HIGH CPU![/]"
+        table.add_row("CPU Usage", f"[bold {cpu_color}]{cpu_spark}[/]", cpu_metrics)
 
         # Memory row
         mem_metrics = f"{mem_display}"
-        table.add_row("Memory RSS", f"[bold yellow]{mem_spark}[/]", mem_metrics)
+        if mem_val >= 90.0:
+            mem_metrics += " [bold red]!HIGH MEM![/]"
+        table.add_row("Memory RSS", f"[bold {mem_color}]{mem_spark}[/]", mem_metrics)
 
         # Network & Disk row
         table.add_row("Network I/O", net_display, f"Disk I/O: {io_display}")
 
-        content = Text()
-        content.append_text(info_text)
-        content.append("\n\n")
+        # Quick action row (copy / browser)
+        actions_text = Text()
+        actions_text.append("Shortcuts: ", style="dim")
+        if cont.web_url:
+            actions_text.append("o: Open Web Browser  |  ", style="bold green")
+        actions_text.append("y: Copy Conn String  |  ", style="cyan")
+        actions_text.append("e: Exec Shell  |  d: Details  |  Shift+R: Restart Stack", style="dim")
+        table.add_row("", actions_text, "")
 
         panel = Panel(
             table,
             title=f"⚡ {title_text}",
             subtitle=info_text.plain,
-            border_style="#0284c7" if cont.is_running else "#475569",
+            border_style="#ef4444"
+            if (cont.is_oom_killed or cpu_val >= 90.0)
+            else ("#0284c7" if cont.is_running else "#475569"),
         )
         static.update(panel)

@@ -1,4 +1,7 @@
-"""Live streaming log tail widget with demultiplexed colors, search, and auto-scroll control."""
+"""Live streaming log tail widget with demultiplexed colors, search, timestamps, and export."""
+
+from datetime import datetime
+from pathlib import Path
 
 from rich.text import Text
 from textual import on
@@ -10,7 +13,7 @@ from dockpulse.core.log_multiplexer import LogLine, LogMultiplexer
 
 
 class LogTailWidget(Widget):
-    """Container log tailing widget with search filter and pause/resume scroll locking."""
+    """Container log tailing widget with search filter, timestamps, level filter, and file export."""
 
     DEFAULT_CSS = """
     LogTailWidget {
@@ -45,9 +48,13 @@ class LogTailWidget(Widget):
 
     def __init__(self) -> None:
         super().__init__()
-        self._multiplexer = LogMultiplexer(max_lines=1500)
+        self._multiplexer = LogMultiplexer(max_lines=2000)
         self._auto_scroll = True
         self._active_query: str = ""
+        self._show_timestamps: bool = True
+        self._severity_filter: str | None = (
+            None  # None: ALL, "WARN": Warn/Error, "ERROR": Error only
+        )
 
     def compose(self) -> ComposeResult:
         yield Static("", id="log-header")
@@ -63,8 +70,8 @@ class LogTailWidget(Widget):
         rich_log = self.query_one("#rich-log-box", RichLog)
 
         # Check filter condition
-        if not self._active_query or self._matches_filter(line):
-            rich_log.write(line.render_markup())
+        if self._matches_filter(line):
+            rich_log.write(line.render_markup(show_timestamp=self._show_timestamps))
 
         self._update_header()
 
@@ -82,6 +89,35 @@ class LogTailWidget(Widget):
         rich_log.auto_scroll = self._auto_scroll
         self._update_header()
         return self._auto_scroll
+
+    def toggle_timestamps(self) -> bool:
+        """Toggle timestamp visibility."""
+        self._show_timestamps = not self._show_timestamps
+        self._replay_filtered_logs()
+        return self._show_timestamps
+
+    def cycle_severity_filter(self) -> str:
+        """Cycle through log severity filters: ALL -> WARN+ -> ERROR ONLY -> ALL."""
+        if self._severity_filter is None:
+            self._severity_filter = "WARN"
+            label = "WARN+"
+        elif self._severity_filter == "WARN":
+            self._severity_filter = "ERROR"
+            label = "ERROR ONLY"
+        else:
+            self._severity_filter = None
+            label = "ALL"
+
+        self._replay_filtered_logs()
+        return label
+
+    def export_logs_to_file(self, container_name: str = "container") -> tuple[Path, int]:
+        """Export stored logs to a timestamped file in the working directory."""
+        now_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_name = container_name.replace("/", "").replace(":", "_")
+        filename = Path(f"dockpulse_{safe_name}_{now_str}.log")
+        count = self._multiplexer.export_to_file(filename)
+        return filename.resolve(), count
 
     def toggle_search_bar(self) -> None:
         """Toggle visibility of the search input."""
@@ -105,25 +141,48 @@ class LogTailWidget(Widget):
         rich_log.focus()
 
     def _matches_filter(self, line: LogLine) -> bool:
-        if not self._active_query:
-            return True
-        return self._active_query.lower() in line.text.lower()
+        if self._severity_filter == "ERROR" and line.severity != "ERROR":
+            return False
+        if self._severity_filter == "WARN" and line.severity not in ("ERROR", "WARN"):
+            return False
+        if self._active_query and self._active_query.lower() not in line.text.lower():
+            return False
+        return True
 
     def _replay_filtered_logs(self) -> None:
         rich_log = self.query_one("#rich-log-box", RichLog)
         rich_log.clear()
-        lines = self._multiplexer.get_lines(self._active_query if self._active_query else None)
+        lines = self._multiplexer.get_lines(
+            query=self._active_query if self._active_query else None,
+            min_severity=self._severity_filter,
+        )
         for line in lines:
-            rich_log.write(line.render_markup())
+            rich_log.write(line.render_markup(show_timestamp=self._show_timestamps))
         self._update_header()
 
     def _update_header(self) -> None:
         header = self.query_one("#log-header", Static)
         text = Text()
         text.append("LOG STREAM ", style="bold cyan")
+
         scroll_status = "ON" if self._auto_scroll else "PAUSED"
         scroll_style = "bold green" if self._auto_scroll else "bold yellow"
         text.append(f"[Auto-scroll: {scroll_status}] ", style=scroll_style)
-        text.append(f"[Total: {self._multiplexer.count}]  ", style="dim")
-        text.append("Keys: Space (pause/scroll) | c (clear) | / (search)", style="dim italic")
+
+        ts_status = "ON" if self._show_timestamps else "OFF"
+        text.append(f"[TS: {ts_status}] ", style="bold blue" if self._show_timestamps else "dim")
+
+        sev_label = "ALL"
+        if self._severity_filter == "WARN":
+            sev_label = "WARN+"
+        elif self._severity_filter == "ERROR":
+            sev_label = "ERROR ONLY"
+        text.append(
+            f"[Level: {sev_label}] ", style="bold magenta" if self._severity_filter else "dim"
+        )
+
+        text.append(f"[Lines: {self._multiplexer.count}]  ", style="dim")
+        text.append(
+            "Keys: t (TS) | l (Level) | Space (Pause) | Ctrl+S (Export)", style="dim italic"
+        )
         header.update(text)
