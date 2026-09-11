@@ -1,0 +1,170 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <clipPath id="squircle-clip">
+      <rect x="24" y="24" width="976" height="976" rx="220" />
+    </clipPath>
+
+    <linearGradient id="cyan-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f5ff"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+
+    <linearGradient id="cyan-pulse" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#00f5ff" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#0284c7" stop-opacity="0.2"/>
+    </linearGradient>
+
+    <linearGradient id="slate-facet-light" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#475569"/>
+      <stop offset="100%" stop-color="#334155"/>
+    </linearGradient>
+
+    <linearGradient id="slate-facet-dark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+
+    <linearGradient id="chest-light" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#e2e8f0"/>
+    </linearGradient>
+
+    <linearGradient id="chest-dark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#cbd5e1"/>
+      <stop offset="100%" stop-color="#94a3b8"/>
+    </linearGradient>
+
+    <filter id="subtle-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#000000" flood-opacity="0.14" />
+    </filter>
+
+    <filter id="sonar-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#00f5ff" flood-opacity="0.6" />
+    </filter>
+  </defs>
+
+  <!-- Luxury White Squircle Container -->
+  <rect x="24" y="24" width="976" height="976" rx="220" fill="#ffffff" stroke="#e2e8f0" stroke-width="6" />
+
+  <g clip-path="url(#squircle-clip)">
+    <g transform="translate(512, 512)" filter="url(#subtle-shadow)">
+
+      <!-- Hexagonal Architectural Gateway Frame -->
+      <polygon points="
+        0,-390
+        338,-195
+        338,195
+        0,390
+        -338,195
+        -338,-195
+      " fill="none" stroke="#0f172a" stroke-width="40" stroke-linejoin="round" />
+
+      <!-- Hexagonal Inner Cyan Telemetry Rail -->
+      <polygon points="
+        0,-355
+        307,-177
+        307,177
+        0,355
+        -307,177
+        -307,-177
+      " fill="none" stroke="#00f5ff" stroke-width="4" opacity="0.45" stroke-dasharray="16, 12" />
+
+      <!-- Sonar Acoustic Pulse Rings (Acoustic Echolocation / Pulse Telemetry) -->
+      <path d="M -50,-150 A 60 60 0 0 1 50,-150" fill="none" stroke="#00f5ff" stroke-width="5" stroke-linecap="round" filter="url(#sonar-glow)" />
+      <path d="M -90,-190 A 110 110 0 0 1 90,-190" fill="none" stroke="#00f5ff" stroke-width="4" stroke-linecap="round" opacity="0.6" stroke-dasharray="8, 6" />
+      <path d="M -130,-230 A 160 160 0 0 1 130,-230" fill="none" stroke="#00f5ff" stroke-width="3" stroke-linecap="round" opacity="0.35" />
+
+      <!-- ============================================== -->
+      <!-- THE SONAR ORCA (Symmetrical Origami Silhouette) -->
+      <!-- ============================================== -->
+
+      <!-- 1. Dorsal Fin (Apex Navigator) -->
+      <!-- Right Dorsal Upper -->
+      <polygon points="0,-275 32,-175 0,-130" fill="url(#slate-facet-light)" stroke="#0f172a" stroke-width="2" />
+      <!-- Left Dorsal Upper -->
+      <polygon points="0,-275 -32,-175 0,-130" fill="url(#slate-facet-dark)" stroke="#0f172a" stroke-width="2" />
+      <!-- Right Dorsal Lower -->
+      <polygon points="0,-130 50,-80 0,-70" fill="#334155" stroke="#0f172a" stroke-width="2" />
+      <!-- Left Dorsal Lower -->
+      <polygon points="0,-130 -50,-80 0,-70" fill="#0f172a" stroke="#0f172a" stroke-width="2" />
+
+      <!-- 2. Forehead & Melon (Echolocation Dome) -->
+      <!-- Right Melon Facet -->
+      <polygon points="0,-70 80,-35 0,10" fill="#475569" stroke="#0f172a" stroke-width="2" />
+      <!-- Left Melon Facet -->
+      <polygon points="0,-70 -80,-35 0,10" fill="#1e293b" stroke="#0f172a" stroke-width="2" />
+
+      <!-- 3. Snout & Rostrum -->
+      <!-- Right Snout Facet -->
+      <polygon points="0,10 70,80 0,115" fill="#334155" stroke="#0f172a" stroke-width="2" />
+      <!-- Left Snout Facet -->
+      <polygon points="0,10 -70,80 0,115" fill="#0b0f19" stroke="#0f172a" stroke-width="2" />
+
+      <!-- 4. Pectoral Hydrofoil Wings (Span fills ~80% of Gateway width) -->
+      <!-- Right Wing Leading Edge -->
+      <polygon points="80,-35 255,75 160,85" fill="#475569" stroke="#0f172a" stroke-width="2" />
+      <!-- Right Wing Mid Plate -->
+      <polygon points="160,85 255,75 190,165 115,145" fill="#334155" stroke="#0f172a" stroke-width="2" />
+      <!-- Right Wing Trailing Flange -->
+      <polygon points="70,80 115,145 190,165 105,175" fill="#1e293b" stroke="#0f172a" stroke-width="2" />
+
+      <!-- Left Wing Leading Edge -->
+      <polygon points="-80,-35 -255,75 -160,85" fill="#1e293b" stroke="#0f172a" stroke-width="2" />
+      <!-- Left Wing Mid Plate -->
+      <polygon points="-160,85 -255,75 -190,165 -115,145" fill="#0f172a" stroke="#0f172a" stroke-width="2" />
+      <!-- Left Wing Trailing Flange -->
+      <polygon points="-70,80 -115,145 -190,165 -105,175" fill="#0b0f19" stroke="#0f172a" stroke-width="2" />
+
+      <!-- Pectoral Hydrofoil Electric Cyan Edge Accents -->
+      <line x1="80" y1="-35" x2="255" y2="75" stroke="#00f5ff" stroke-width="4" stroke-linecap="round" />
+      <line x1="-80" y1="-35" x2="-255" y2="75" stroke="#00f5ff" stroke-width="4" stroke-linecap="round" />
+
+      <!-- 5. Orca Characteristic Eye Patches & Telemetry Lenses -->
+      <!-- Right Eye Patch (White Ventral Pattern) -->
+      <polygon points="80,-35 125,5 95,25 60,-5" fill="url(#chest-light)" stroke="#0f172a" stroke-width="1.5" />
+      <!-- Left Eye Patch (Shaded White Ventral Pattern) -->
+      <polygon points="-80,-35 -125,5 -95,25 -60,-5" fill="url(#chest-dark)" stroke="#0f172a" stroke-width="1.5" />
+
+      <!-- Right Sonar Optical Node (Electric Cyan) -->
+      <polygon points="88,-12 110,-4 100,10 80,2" fill="url(#cyan-glow)" filter="url(#sonar-glow)" />
+      <!-- Left Sonar Optical Node (Electric Cyan) -->
+      <polygon points="-88,-12 -110,-4 -100,10 -80,2" fill="url(#cyan-glow)" filter="url(#sonar-glow)" />
+
+      <!-- 6. Ventral Chest Shield & Heartbeat Pulse -->
+      <!-- Right Chest Armor -->
+      <polygon points="0,115 105,175 0,255" fill="url(#chest-light)" stroke="#0f172a" stroke-width="2" />
+      <!-- Left Chest Armor -->
+      <polygon points="0,115 -105,175 0,255" fill="url(#chest-dark)" stroke="#0f172a" stroke-width="2" />
+
+      <!-- Central Sonar Heartbeat Pulse Trace (The DockPulse Signature) -->
+      <polyline points="
+        0,125
+        -18,150
+        0,175
+        26,160
+        -32,205
+        18,225
+        0,245
+      " fill="none" stroke="#00f5ff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#sonar-glow)" />
+
+      <!-- 7. Fluke Stem & Tail Keel -->
+      <!-- Right Stem -->
+      <polygon points="0,255 45,285 0,330" fill="#334155" stroke="#0f172a" stroke-width="2" />
+      <!-- Left Stem -->
+      <polygon points="0,255 -45,285 0,330" fill="#1e293b" stroke="#0f172a" stroke-width="2" />
+
+      <!-- Right Fluke Wing (Tail) -->
+      <polygon points="45,285 145,305 95,345 0,330" fill="url(#slate-facet-light)" stroke="#0f172a" stroke-width="2" />
+      <!-- Left Fluke Wing (Tail) -->
+      <polygon points="-45,285 -145,305 -95,345 0,330" fill="url(#slate-facet-dark)" stroke="#0f172a" stroke-width="2" />
+
+      <!-- Fluke Trailing Cyan Accents -->
+      <line x1="45" y1="285" x2="145" y2="305" stroke="#00f5ff" stroke-width="3" stroke-linecap="round" opacity="0.8" />
+      <line x1="-45" y1="285" x2="-145" y2="305" stroke="#00f5ff" stroke-width="3" stroke-linecap="round" opacity="0.8" />
+
+      <!-- Pulse Telemetry Node at Tail Keel -->
+      <circle cx="0" cy="330" r="5" fill="#00f5ff" filter="url(#sonar-glow)" />
+
+    </g>
+  </g>
+</svg>

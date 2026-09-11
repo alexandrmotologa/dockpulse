@@ -18,6 +18,8 @@ dockpulse --demo
 
 ## Screen Layout
 
+![DockPulse Terminal HUD](images/screenshot_main.png)
+
 1. **Header Bar**: Displays Docker engine version, API version, connection endpoint, reclaimable disk space, and counts for running, paused, and stopped containers.
 2. **Container Panel (Left)**: Shows containers grouped by Compose project. Press `Up` and `Down` to navigate, `Enter` to expand or collapse Compose groups or open the container command runner. Filter by typing `/`.
 3. **Telemetry Panel (Top Right)**: Displays real-time rolling sparkline charts for CPU usage and memory consumption, plus network transmission, block disk metrics, and watchdog anomaly badges (`💀 OOMKilled`, `⚠️ CrashLoop`).

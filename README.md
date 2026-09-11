@@ -1,10 +1,24 @@
-# DockPulse
+<p align="center">
+  <img src="docs/images/logo.png?raw=true" alt="DockPulse Logo" width="140" style="border-radius: 28px;" />
+</p>
 
-High-speed, keyboard-driven terminal dashboard and CLI tool for Docker and Docker Compose. DockPulse connects directly to the Docker Engine socket without external daemons, groups containers by Compose project, renders live rolling resource graphs, tails multiplexed logs, and provides container lifecycle controls from your keyboard.
+<h1 align="center">DockPulse</h1>
 
-[![CI](https://github.com/alexandrmotologa/dockpulse/actions/workflows/ci.yml/badge.svg)](https://github.com/alexandrmotologa/dockpulse/actions)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+<p align="center">
+  High-speed, keyboard-driven terminal dashboard and CLI suite for Docker and Docker Compose. Direct engine socket connection, live rolling resource sparklines, demultiplexed log streaming, and container lifecycle controls.
+</p>
+
+<p align="center">
+  <a href="https://github.com/alexandrmotologa/dockpulse/actions"><img src="https://github.com/alexandrmotologa/dockpulse/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python 3.12+" /></a>
+</p>
+
+---
+
+<p align="center">
+  <img src="docs/images/screenshot_main.png" alt="DockPulse Live Terminal Dashboard" width="100%" />
+</p>
 
 ---
 
@@ -115,6 +129,16 @@ dockpulse prune --dry-run
 | `c` | Clear log buffer |
 | `?` | Show help modal |
 | `q` | Exit HUD |
+
+---
+
+## Interactive Modals
+
+DockPulse includes built-in modal overlays for inspection, container management, and visual personalization:
+
+| Local Images Manager (`i`) | Theme Palette Switcher (`Shift+T`) |
+|---|---|
+| ![DockPulse Images Modal](docs/images/screenshot_images.png) | ![DockPulse Theme Switcher](docs/images/screenshot_theme.png) |
 
 ---
 
