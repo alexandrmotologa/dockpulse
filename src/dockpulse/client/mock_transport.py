@@ -127,6 +127,34 @@ class MockDockerTransport(httpx.AsyncBaseTransport):
                             "RW": False,
                         }
                     ],
+                    "State": {
+                        "Status": target.get("State", "running"),
+                        "Running": target.get("State") == "running",
+                        "Health": {
+                            "Status": "healthy",
+                            "FailingStreak": 0,
+                            "Log": [
+                                {
+                                    "Start": "2026-10-01T14:00:00Z",
+                                    "End": "2026-10-01T14:00:01Z",
+                                    "ExitCode": 0,
+                                    "Output": "HTTP/1.1 200 OK (ping latency=8ms)",
+                                },
+                                {
+                                    "Start": "2026-10-01T14:00:30Z",
+                                    "End": "2026-10-01T14:00:31Z",
+                                    "ExitCode": 0,
+                                    "Output": "HTTP/1.1 200 OK (ping latency=12ms)",
+                                },
+                                {
+                                    "Start": "2026-10-01T14:01:00Z",
+                                    "End": "2026-10-01T14:01:01Z",
+                                    "ExitCode": 0,
+                                    "Output": "HTTP/1.1 200 OK (ping latency=9ms)",
+                                },
+                            ],
+                        },
+                    },
                 }
                 return httpx.Response(200, json=inspect_data)
 

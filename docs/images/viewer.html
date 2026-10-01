@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      background: #090d16;
+      width: max-content;
+      height: max-content;
+      overflow: hidden;
+    }
+    #terminal-container {
+      display: block;
+      margin: 0;
+      padding: 0;
+    }
+    svg.rich-terminal {
+      display: block;
+    }
+    svg text {
+      font-family: 'Fira Code', 'JetBrains Mono', ui-monospace, monospace !important;
+      text-rendering: geometricPrecision;
+      -webkit-font-smoothing: antialiased;
+    }
+  </style>
+</head>
+<body>
+  <div id="terminal-container"></div>
+  <script>
+    async function loadSvg() {
+      const params = new URLSearchParams(window.location.search);
+      const file = params.get('file') || 'screenshot_main.svg';
+      const resp = await fetch(file);
+      const text = await resp.text();
+      const container = document.getElementById('terminal-container');
+      container.innerHTML = text;
+      
+      const svg = container.querySelector('svg');
+      if (svg && svg.getAttribute('viewBox')) {
+        const parts = svg.getAttribute('viewBox').split(' ');
+        const w = parseFloat(parts[2]);
+        const h = parseFloat(parts[3]);
+        svg.style.width = w + 'px';
+        svg.style.height = h + 'px';
+      }
+      
+      await document.fonts.ready;
+      window.isReady = true;
+    }
+    loadSvg();
+  </script>
+</body>
+</html>

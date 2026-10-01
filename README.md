@@ -110,6 +110,10 @@ dockpulse prune --dry-run
 dockpulse prune --force
 ```
 
+<p align="center">
+  <img src="docs/images/screenshot_cli.png" alt="DockPulse CLI Suite" width="100%" />
+</p>
+
 ---
 
 ## Keybindings
@@ -126,7 +130,7 @@ dockpulse prune --force
 | `o` | Open container web port in browser |
 | `y` | Copy connection string or exec command to clipboard |
 | `e` / `Enter` | Open container shell / command runner |
-| `d` | Inspect container details (ports, mounts, env) |
+| `d` | Inspect container details (ports, mounts, env, health checks) |
 | `i` | Open Docker images manager modal |
 | `v` | Open Docker volumes manager modal |
 | `Shift+T` | Open theme palette selector modal |
@@ -143,11 +147,15 @@ dockpulse prune --force
 
 ## Interactive Modals
 
-DockPulse includes built-in modal overlays for inspection, container management, and visual personalization:
+DockPulse includes built-in modal overlays for deep container inspection, health verification, storage pruning, and visual personalization:
 
-| Local Images Manager (`i`) | Theme Palette Switcher (`Shift+T`) |
+| Container Health & Inspection (`d`) | Theme Palette Switcher (`Shift+T`) |
 |---|---|
-| ![DockPulse Images Modal](docs/images/screenshot_images.png) | ![DockPulse Theme Switcher](docs/images/screenshot_theme.png) |
+| ![DockPulse Inspect Modal](docs/images/screenshot_inspect.png) | ![DockPulse Theme Switcher](docs/images/screenshot_theme.png) |
+
+| Local Images Manager (`i`) | Persistent Volumes Manager (`v`) |
+|---|---|
+| ![DockPulse Images Modal](docs/images/screenshot_images.png) | ![DockPulse Volumes Modal](docs/images/screenshot_volumes.png) |
 
 ---
 
