@@ -91,6 +91,18 @@ class DockerApiClient:
             )
         return resp.json()
 
+    async def get_container_top(self, container_id: str, ps_args: str = "-ef") -> dict[str, Any]:
+        """List running processes inside a container (docker top)."""
+        resp = await self._client.get(
+            self._url(f"/containers/{container_id}/top"), params={"ps_args": ps_args}
+        )
+        if resp.status_code != 200:
+            raise DockerApiError(
+                f"Failed to get processes for container {container_id}: {resp.text}",
+                resp.status_code,
+            )
+        return resp.json()
+
     async def restart_container(self, container_id: str, timeout: int = 10) -> bool:
         """Restart a running container."""
         resp = await self._client.post(

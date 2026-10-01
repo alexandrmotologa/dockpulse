@@ -130,6 +130,39 @@ class MockDockerTransport(httpx.AsyncBaseTransport):
                 }
                 return httpx.Response(200, json=inspect_data)
 
+            # Container top (processes)
+            if len(parts) == 2 and parts[1] == "top" and method == "GET":
+                if not target:
+                    return httpx.Response(
+                        404, json={"message": f"No such container: {container_id}"}
+                    )
+                top_data = {
+                    "Titles": ["UID", "PID", "PPID", "C", "STIME", "TTY", "TIME", "CMD"],
+                    "Processes": [
+                        [
+                            "root",
+                            "1042",
+                            "1",
+                            "0.2",
+                            "10:00",
+                            "?",
+                            "00:00:15",
+                            target.get("Command", "entrypoint.sh"),
+                        ],
+                        [
+                            "node",
+                            "1120",
+                            "1042",
+                            "0.8",
+                            "10:00",
+                            "?",
+                            "00:01:22",
+                            "node server.js",
+                        ],
+                    ],
+                }
+                return httpx.Response(200, json=top_data)
+
             # Container lifecycle
             if len(parts) == 2 and method == "POST":
                 action = parts[1]

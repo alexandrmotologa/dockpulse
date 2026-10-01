@@ -102,14 +102,16 @@ def _parse_socket_string(target: str, timeout: float) -> DockerConfig:
             is_demo=True,
         )
 
+    npipe_prefix = r"\\.\pipe" + "\\"
     if (
         target_clean.startswith("npipe://")
         or target_clean.startswith("//./pipe/")
-        or target_clean.startswith(r"\\.\pipe\\")
+        or target_clean.startswith(npipe_prefix)
     ):
         clean_path = target_clean.removeprefix("npipe://")
         if clean_path.startswith("//./pipe/"):
-            clean_path = r"\\.\pipe\\" + clean_path.removeprefix("//./pipe/")
+            pipe_name = clean_path.removeprefix("//./pipe/")
+            clean_path = npipe_prefix + pipe_name
         return DockerConfig(
             socket_path=clean_path,
             socket_type="npipe",
@@ -191,3 +193,37 @@ def load_user_preferences() -> UserPreferences:
                 continue
 
     return UserPreferences()
+
+
+def save_user_theme(theme_name: str) -> bool:
+    """Save selected theme to local dockpulse.toml or user config if accessible."""
+    import re
+
+    candidates = [
+        Path("dockpulse.toml"),
+        Path.home() / ".config" / "dockpulse" / "config.toml",
+    ]
+
+    target_path = None
+    for path in candidates:
+        if path.is_file():
+            target_path = path
+            break
+
+    if not target_path:
+        target_path = Path("dockpulse.toml")
+
+    try:
+        content = target_path.read_text(encoding="utf-8") if target_path.exists() else ""
+        if re.search(r'theme\s*=\s*["\'][^"\']+["\']', content):
+            new_content = re.sub(
+                r'theme\s*=\s*["\'][^"\']+["\']', f'theme = "{theme_name}"', content
+            )
+        elif "[ui]" in content:
+            new_content = content.replace("[ui]", f'[ui]\ntheme = "{theme_name}"')
+        else:
+            new_content = f'[ui]\ntheme = "{theme_name}"\n\n' + content
+        target_path.write_text(new_content, encoding="utf-8")
+        return True
+    except Exception:
+        return False

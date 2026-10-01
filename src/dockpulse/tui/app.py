@@ -1,6 +1,7 @@
 """Main Textual application for the DockPulse terminal HUD."""
 
 import asyncio
+import logging
 import webbrowser
 
 from textual import on
@@ -9,7 +10,13 @@ from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 
 from dockpulse.client.docker_api import DockerApiClient
-from dockpulse.config import DockerConfig, detect_docker_config
+from dockpulse.config import (
+    DockerConfig,
+    UserPreferences,
+    detect_docker_config,
+    load_user_preferences,
+    save_user_theme,
+)
 from dockpulse.core.clipboard import copy_to_clipboard
 from dockpulse.core.container import ContainerModel
 from dockpulse.core.stats_streamer import ContainerStatsCalculator, format_bytes
@@ -25,6 +32,8 @@ from dockpulse.tui.widgets.container_tree import ContainerTreeWidget
 from dockpulse.tui.widgets.header_bar import HeaderBar
 from dockpulse.tui.widgets.log_tail import LogTailWidget
 from dockpulse.tui.widgets.sparkline_panel import SparklinePanel
+
+logger = logging.getLogger("dockpulse.tui")
 
 
 class DockPulseHUD(App[None]):
@@ -63,12 +72,16 @@ class DockPulseHUD(App[None]):
         self,
         config: DockerConfig | None = None,
         api_client: DockerApiClient | None = None,
-        theme_name: str = "default",
+        theme_name: str | None = None,
     ) -> None:
         super().__init__()
         self.config = config or detect_docker_config()
         self.api_client = api_client or DockerApiClient(config=self.config)
-        self.active_palette: ThemePalette = get_theme(theme_name)
+        self.user_prefs: UserPreferences = load_user_preferences()
+
+        # Theme: explicit arg > user prefs > default
+        resolved_theme = theme_name or self.user_prefs.theme
+        self.active_palette: ThemePalette = get_theme(resolved_theme)
 
         self._active_container: ContainerModel | None = None
         self._stats_task: asyncio.Task[None] | None = None
@@ -108,6 +121,14 @@ class DockPulseHUD(App[None]):
             except Exception:
                 header.engine_version = "Connected"
 
+        # Apply user preferences to log widget and theme
+        log_widget = self.query_one(LogTailWidget)
+        if not self.user_prefs.show_timestamps:
+            log_widget.toggle_timestamps()
+
+        if self.active_palette.name != "default":
+            self._apply_theme(self.active_palette, persist=False)
+
         await self._refresh_containers()
         await self._refresh_disk_usage()
 
@@ -128,7 +149,8 @@ class DockPulseHUD(App[None]):
         """Query Docker daemon for active containers and update tree and header counts."""
         try:
             containers = await self.api_client.list_containers(all_containers=True)
-        except Exception:
+        except Exception as err:
+            logger.warning("Failed to refresh container list: %s", err)
             containers = []
 
         header = self.query_one(HeaderBar)
@@ -170,8 +192,8 @@ class DockPulseHUD(App[None]):
             if reclaimable_bytes > 0:
                 header = self.query_one(HeaderBar)
                 header.reclaimable_space = format_bytes(reclaimable_bytes)
-        except Exception:
-            pass
+        except Exception as err:
+            logger.debug("Failed to fetch disk usage: %s", err)
 
     async def _periodic_inventory_refresh(self) -> None:
         """Poll container list periodically to reflect status transitions."""
@@ -181,8 +203,8 @@ class DockPulseHUD(App[None]):
                 await self._refresh_containers()
             except asyncio.CancelledError:
                 break
-            except Exception:
-                pass
+            except Exception as err:
+                logger.debug("Periodic refresh error: %s", err)
 
     @on(ContainerTreeWidget.ContainerHighlighted)
     def _on_container_highlighted(self, event: ContainerTreeWidget.ContainerHighlighted) -> None:
@@ -226,21 +248,28 @@ class DockPulseHUD(App[None]):
                 spark_panel.update_stats(snapshot)
         except asyncio.CancelledError:
             pass
-        except Exception:
-            pass
+        except Exception as err:
+            logger.warning("Stats stream disconnected for %s: %s", container_id, err)
+            self.notify(
+                "Stats stream lost. Reconnect by re-selecting.", severity="warning", timeout=4
+            )
 
     async def _stream_logs_loop(self, container_id: str) -> None:
         """Stream demultiplexed logs and pipe to LogTailWidget."""
         log_widget = self.query_one(LogTailWidget)
+        tail_lines = self.user_prefs.log_tail_lines
         try:
             async for stream_id, line in self.api_client.stream_logs(
-                container_id, tail=100, follow=True
+                container_id, tail=tail_lines, follow=True
             ):
                 log_widget.add_log_line(stream_id, line)
         except asyncio.CancelledError:
             pass
-        except Exception:
-            pass
+        except Exception as err:
+            logger.warning("Log stream disconnected for %s: %s", container_id, err)
+            self.notify(
+                "Log stream lost. Reconnect by re-selecting.", severity="warning", timeout=4
+            )
 
     # Action Handlers
     async def action_restart_container(self) -> None:
@@ -396,7 +425,8 @@ class DockPulseHUD(App[None]):
     def action_exec_shell(self) -> None:
         if not self._active_container:
             return
-        self.push_screen(ShellModal(self.api_client, self._active_container))
+        cmd = self.user_prefs.custom_shell or "uname -a"
+        self.push_screen(ShellModal(self.api_client, self._active_container, initial_command=cmd))
 
     def action_search(self) -> None:
         tree = self.query_one(ContainerTreeWidget)
@@ -445,12 +475,63 @@ class DockPulseHUD(App[None]):
     def action_switch_theme(self) -> None:
         self.push_screen(ThemeModal(self._apply_theme))
 
-    def _apply_theme(self, palette: ThemePalette) -> None:
-        """Apply a new color theme at runtime."""
+    def _apply_theme(self, palette: ThemePalette, persist: bool = True) -> None:
+        """Apply a new color theme at runtime and optionally persist it."""
         self.active_palette = palette
         self.screen.styles.background = palette.bg_main
         self.screen.styles.color = palette.text_main
-        self.notify(f"Theme switched to {palette.display_name}", title="Theme Applied")
+
+        # Update HeaderBar styles
+        try:
+            hb = self.query_one(HeaderBar)
+            hb.styles.background = palette.bg_secondary
+            hb.styles.color = palette.text_main
+            hb.styles.border_bottom = ("solid", palette.border)
+            title = hb.query_one("#brand-title")
+            title.styles.color = palette.accent
+            daemon = hb.query_one("#daemon-info")
+            daemon.styles.color = palette.text_dim
+        except Exception as err:
+            logger.debug("HeaderBar theme error: %s", err)
+
+        # Update ContainerTreeWidget styles
+        try:
+            tree_widget = self.query_one(ContainerTreeWidget)
+            tree_widget.styles.background = palette.bg_secondary
+            tree_widget.styles.border_right = ("solid", palette.border)
+            search_input = tree_widget.query_one("#search-input")
+            search_input.styles.background = palette.bg_main
+            search_input.styles.border = ("tall", palette.border)
+            search_input.styles.color = palette.text_main
+            tree_view = tree_widget.query_one("#tree-view")
+            tree_view.styles.background = palette.bg_secondary
+        except Exception as err:
+            logger.debug("ContainerTreeWidget theme error: %s", err)
+
+        # Update SparklinePanel styles
+        try:
+            sp = self.query_one(SparklinePanel)
+            sp.styles.background = palette.bg_panel
+            sp.styles.border_bottom = ("solid", palette.border)
+        except Exception as err:
+            logger.debug("SparklinePanel theme error: %s", err)
+
+        # Update LogTailWidget styles
+        try:
+            lw = self.query_one(LogTailWidget)
+            lw.styles.background = palette.bg_main
+            log_view = lw.query_one("#log-stream-view")
+            log_view.styles.background = palette.bg_main
+        except Exception as err:
+            logger.debug("LogTailWidget theme error: %s", err)
+
+        if persist:
+            saved = save_user_theme(palette.name)
+            saved_note = " (saved to preferences)" if saved else ""
+            self.notify(
+                f"Theme switched to {palette.display_name}{saved_note}",
+                title="Theme Applied",
+            )
 
     def action_show_help(self) -> None:
         self.push_screen(HelpModal())

@@ -56,10 +56,16 @@ class ShellModal(ModalScreen[None]):
     }
     """
 
-    def __init__(self, api_client: DockerApiClient, container: ContainerModel) -> None:
+    def __init__(
+        self,
+        api_client: DockerApiClient,
+        container: ContainerModel,
+        initial_command: str = "uname -a",
+    ) -> None:
         super().__init__()
         self.api_client = api_client
         self.container = container
+        self.initial_command = initial_command
 
     def compose(self) -> ComposeResult:
         with Vertical(id="shell-container"):
@@ -67,7 +73,7 @@ class ShellModal(ModalScreen[None]):
             yield Input(
                 placeholder="Enter command (e.g. sh, uname -a, ps aux)...",
                 id="shell-input",
-                value="uname -a",
+                value=self.initial_command,
             )
             yield RichLog(id="shell-output", markup=True, highlight=True, auto_scroll=True)
             with Horizontal(id="button-bar"):

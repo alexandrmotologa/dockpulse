@@ -18,7 +18,7 @@ if sys.platform == "win32":
 from dockpulse import __version__
 from dockpulse.client.docker_api import DockerApiClient
 from dockpulse.config import detect_docker_config
-from dockpulse.core.container import group_containers_by_compose
+from dockpulse.core.container import ContainerModel, group_containers_by_compose
 from dockpulse.core.stats_streamer import ContainerStatsCalculator, format_bytes
 
 app = typer.Typer(
@@ -154,18 +154,48 @@ async def _async_ps(all_containers: bool, demo: bool, socket: Optional[str]) -> 
     console.print(table)
 
 
+def _resolve_target_container(
+    target: str, containers: list[ContainerModel]
+) -> Optional[ContainerModel]:
+    """Resolve container by exact name, ID prefix, substring name, or ID."""
+    target_clean = target.lstrip("/")
+    # 1. Exact name match
+    for c in containers:
+        if c.primary_name.lstrip("/") == target_clean:
+            return c
+    # 2. Exact or prefix ID match
+    for c in containers:
+        if c.id == target or c.id.startswith(target) or c.short_id == target:
+            return c
+    # 3. Substring match on container name
+    for c in containers:
+        if target_clean in c.primary_name.lstrip("/"):
+            return c
+    # 4. Fallback substring match on full ID
+    for c in containers:
+        if target in c.id:
+            return c
+    return None
+
+
 @app.command("stats")
 def stats_command(
+    limit: Annotated[
+        Optional[int],
+        typer.Option(
+            "--limit", "-l", help="Maximum number of containers to display (default: all)."
+        ),
+    ] = None,
     demo: Annotated[bool, typer.Option("--demo", help="Run in demo mode.")] = False,
     socket: Annotated[
         Optional[str], typer.Option("--socket", "-s", help="Docker socket path.")
     ] = None,
 ) -> None:
     """Display real-time resource telemetry snapshot for running containers."""
-    asyncio.run(_async_stats(demo=demo, socket=socket))
+    asyncio.run(_async_stats(limit=limit, demo=demo, socket=socket))
 
 
-async def _async_stats(demo: bool, socket: Optional[str]) -> None:
+async def _async_stats(limit: Optional[int], demo: bool, socket: Optional[str]) -> None:
     config = detect_docker_config(socket_override=socket, demo=demo)
     client = DockerApiClient(config=config)
 
@@ -195,7 +225,9 @@ async def _async_stats(demo: bool, socket: Optional[str]) -> None:
         table.add_column("Block I/O", style="dim", width=22)
 
         calc = ContainerStatsCalculator()
-        for cont in running[:10]:
+        displayed = running[:limit] if limit is not None else running
+
+        for cont in displayed:
             try:
                 # Fetch single stats sample
                 async for raw_stat in client.stream_stats(cont.id):
@@ -213,6 +245,11 @@ async def _async_stats(demo: bool, socket: Optional[str]) -> None:
                 table.add_row(cont.primary_name, "-", "-", "-", "-", "-")
 
         console.print(table)
+        if limit is not None and len(running) > limit:
+            console.print(
+                f"[dim]Showing {len(displayed)} of {len(running)} containers. "
+                "Omit --limit to show all.[/]"
+            )
 
 
 @app.command("logs")
@@ -235,9 +272,7 @@ async def _async_logs(target: str, tail: int, demo: bool, socket: Optional[str])
     async with client:
         try:
             containers = await client.list_containers(all_containers=True)
-            matched = next(
-                (c for c in containers if target in c.primary_name or target in c.id), None
-            )
+            matched = _resolve_target_container(target, containers)
             if not matched:
                 console.print(f"[bold red]Error:[/] No container matching '{target}' found.")
                 raise typer.Exit(code=1)
@@ -306,12 +341,19 @@ async def _async_check(socket: Optional[str]) -> None:
 @app.command("prune")
 def prune_command(
     force: Annotated[bool, typer.Option("--force", "-f", help="Skip confirmation prompt.")] = False,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="Show what would be pruned without deleting anything.")
+    ] = False,
     demo: Annotated[bool, typer.Option("--demo", help="Run in demo mode.")] = False,
     socket: Annotated[
         Optional[str], typer.Option("--socket", "-s", help="Docker socket path.")
     ] = None,
 ) -> None:
     """Remove stopped containers and reclaim disk space."""
+    if dry_run:
+        asyncio.run(_async_prune_dry_run(demo=demo, socket=socket))
+        return
+
     if not force:
         confirm = typer.confirm("Are you sure you want to remove all stopped containers?")
         if not confirm:
@@ -319,6 +361,42 @@ def prune_command(
             raise typer.Abort()
 
     asyncio.run(_async_prune(demo=demo, socket=socket))
+
+
+async def _async_prune_dry_run(demo: bool, socket: Optional[str]) -> None:
+    config = detect_docker_config(socket_override=socket, demo=demo)
+    client = DockerApiClient(config=config)
+
+    async with client:
+        try:
+            containers = await client.list_containers(all_containers=True)
+            stopped = [c for c in containers if c.is_exited]
+            if not stopped:
+                console.print("[green]Nothing to prune — no stopped containers found.[/]")
+                return
+
+            table = Table(
+                title="Containers that would be pruned (dry run)",
+                border_style="#334155",
+                header_style="bold cyan",
+                expand=True,
+            )
+            table.add_column("Name", style="bold white")
+            table.add_column("ID", style="dim", width=14)
+            table.add_column("Image", style="dim cyan")
+            table.add_column("Status", style="dim yellow")
+
+            for c in stopped:
+                table.add_row(c.primary_name, c.short_id, c.image, c.status)
+
+            console.print(table)
+            console.print(
+                f"\n[bold yellow]Dry run:[/] {len(stopped)} container(s) would be removed. "
+                "Run without --dry-run to execute."
+            )
+        except Exception as err:
+            console.print(f"[bold red]Dry run failed:[/] {err}")
+            raise typer.Exit(code=1) from err
 
 
 async def _async_prune(demo: bool, socket: Optional[str]) -> None:
@@ -336,4 +414,184 @@ async def _async_prune(demo: bool, socket: Optional[str]) -> None:
             )
         except Exception as err:
             console.print(f"[bold red]Prune failed:[/] {err}")
+            raise typer.Exit(code=1) from err
+
+
+@app.command("top")
+def top_command(
+    target: Annotated[str, typer.Argument(help="Container name or container ID.")],
+    demo: Annotated[bool, typer.Option("--demo", help="Run in demo mode.")] = False,
+    socket: Annotated[
+        Optional[str], typer.Option("--socket", "-s", help="Docker socket path.")
+    ] = None,
+) -> None:
+    """Display running processes inside a container (docker top)."""
+    asyncio.run(_async_top(target=target, demo=demo, socket=socket))
+
+
+async def _async_top(target: str, demo: bool, socket: Optional[str]) -> None:
+    config = detect_docker_config(socket_override=socket, demo=demo)
+    client = DockerApiClient(config=config)
+
+    async with client:
+        try:
+            containers = await client.list_containers(all_containers=True)
+            matched = _resolve_target_container(target, containers)
+            if not matched:
+                console.print(f"[bold red]Error:[/] No container matching '{target}' found.")
+                raise typer.Exit(code=1)
+
+            top_data = await client.get_container_top(matched.id)
+            titles = top_data.get("Titles", [])
+            processes = top_data.get("Processes", [])
+
+            table = Table(
+                title=f"Processes in {matched.primary_name} ({matched.short_id})",
+                border_style="#334155",
+                header_style="bold cyan",
+                expand=True,
+            )
+            for title in titles:
+                table.add_column(title, style="white")
+
+            for proc in processes:
+                table.add_row(*[str(col) for col in proc])
+
+            console.print(table)
+            console.print(f"[dim]Total running processes: {len(processes)}[/]")
+        except Exception as err:
+            console.print(f"[bold red]Top failed:[/] {err}")
+            raise typer.Exit(code=1) from err
+
+
+# Compose Subcommands
+compose_app = typer.Typer(
+    name="compose",
+    help="Manage Docker Compose project stacks.",
+    no_args_is_help=False,
+)
+app.add_typer(compose_app, name="compose")
+
+
+@compose_app.command("ps")
+def compose_ps_command(
+    project: Annotated[
+        Optional[str], typer.Argument(help="Optional Compose project name to filter by.")
+    ] = None,
+    demo: Annotated[bool, typer.Option("--demo", help="Run in demo mode.")] = False,
+    socket: Annotated[
+        Optional[str], typer.Option("--socket", "-s", help="Docker socket path.")
+    ] = None,
+) -> None:
+    """List Compose project stacks and their services."""
+    asyncio.run(_async_compose_ps(project=project, demo=demo, socket=socket))
+
+
+async def _async_compose_ps(project: Optional[str], demo: bool, socket: Optional[str]) -> None:
+    config = detect_docker_config(socket_override=socket, demo=demo)
+    client = DockerApiClient(config=config)
+
+    async with client:
+        try:
+            containers = await client.list_containers(all_containers=True)
+            projects, _ = group_containers_by_compose(containers)
+
+            if project:
+                projects = [p for p in projects if p.name.lower() == project.lower()]
+                if not projects:
+                    console.print(f"[yellow]No Compose project named '{project}' found.[/]")
+                    return
+
+            if not projects:
+                console.print("[yellow]No Docker Compose projects found.[/]")
+                return
+
+            table = Table(
+                title="Docker Compose Project Stacks",
+                border_style="#334155",
+                header_style="bold cyan",
+                expand=True,
+            )
+            table.add_column("Stack / Project", style="bold white", width=24)
+            table.add_column("Service", style="cyan", width=22)
+            table.add_column("Status", width=14)
+            table.add_column("Container ID", style="dim", width=14)
+            table.add_column("Ports", style="dim green")
+
+            for proj in sorted(projects, key=lambda p: p.name):
+                for c in proj.containers:
+                    status_style = "green" if c.is_running else "red" if c.is_exited else "yellow"
+                    table.add_row(
+                        proj.name,
+                        c.compose_service or c.primary_name,
+                        f"[{status_style}]{c.status}[/]",
+                        c.short_id,
+                        c.ports_summary,
+                    )
+
+            console.print(table)
+        except Exception as err:
+            console.print(f"[bold red]Compose ps failed:[/] {err}")
+            raise typer.Exit(code=1) from err
+
+
+@compose_app.command("restart")
+def compose_restart_command(
+    project: Annotated[str, typer.Argument(help="Compose project name to restart.")],
+    demo: Annotated[bool, typer.Option("--demo", help="Run in demo mode.")] = False,
+    socket: Annotated[
+        Optional[str], typer.Option("--socket", "-s", help="Docker socket path.")
+    ] = None,
+) -> None:
+    """Restart all containers in a Compose stack concurrently."""
+    asyncio.run(_async_compose_restart(project=project, demo=demo, socket=socket))
+
+
+async def _async_compose_restart(project: str, demo: bool, socket: Optional[str]) -> None:
+    config = detect_docker_config(socket_override=socket, demo=demo)
+    client = DockerApiClient(config=config)
+
+    async with client:
+        try:
+            count = await client.restart_compose_project(project)
+            if count == 0:
+                console.print(f"[yellow]No containers found or restarted for stack '{project}'.[/]")
+            else:
+                console.print(
+                    f"[bold green]Success![/] Restarted {count} container(s) in Compose stack '{project}'."
+                )
+        except Exception as err:
+            console.print(f"[bold red]Compose restart failed:[/] {err}")
+            raise typer.Exit(code=1) from err
+
+
+@compose_app.command("stop")
+def compose_stop_command(
+    project: Annotated[str, typer.Argument(help="Compose project name to stop.")],
+    demo: Annotated[bool, typer.Option("--demo", help="Run in demo mode.")] = False,
+    socket: Annotated[
+        Optional[str], typer.Option("--socket", "-s", help="Docker socket path.")
+    ] = None,
+) -> None:
+    """Stop all running containers in a Compose stack concurrently."""
+    asyncio.run(_async_compose_stop(project=project, demo=demo, socket=socket))
+
+
+async def _async_compose_stop(project: str, demo: bool, socket: Optional[str]) -> None:
+    config = detect_docker_config(socket_override=socket, demo=demo)
+    client = DockerApiClient(config=config)
+
+    async with client:
+        try:
+            count = await client.stop_compose_project(project)
+            if count == 0:
+                console.print(
+                    f"[yellow]No running containers found to stop for stack '{project}'.[/]"
+                )
+            else:
+                console.print(
+                    f"[bold green]Success![/] Stopped {count} container(s) in Compose stack '{project}'."
+                )
+        except Exception as err:
+            console.print(f"[bold red]Compose stop failed:[/] {err}")
             raise typer.Exit(code=1) from err

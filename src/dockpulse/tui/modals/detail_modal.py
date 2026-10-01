@@ -67,6 +67,36 @@ class DetailModal(ModalScreen[None]):
         )
         table.add_row("Status", self.data.get("Status", "-"))
 
+        # Healthcheck status & recent check log history
+        state_obj = self.data.get("State", {})
+        if isinstance(state_obj, dict):
+            health = state_obj.get("Health")
+            if health and isinstance(health, dict):
+                health_status = health.get("Status", "-")
+                failing_streak = health.get("FailingStreak", 0)
+                status_color = (
+                    "green"
+                    if health_status == "healthy"
+                    else "red"
+                    if health_status == "unhealthy"
+                    else "yellow"
+                )
+                h_text = Text()
+                h_text.append(f"{health_status.upper()}", style=f"bold {status_color}")
+                if failing_streak > 0:
+                    h_text.append(f" (failing streak: {failing_streak})", style="bold red")
+
+                log_entries = health.get("Log", [])
+                if isinstance(log_entries, list) and log_entries:
+                    h_text.append("\nRecent health probes:\n", style="dim")
+                    for entry in log_entries[-3:]:
+                        exit_code = entry.get("ExitCode", 0)
+                        output = (entry.get("Output") or "").strip().replace("\n", " ")[:60]
+                        badge = "✓" if exit_code == 0 else f"✗ (code {exit_code})"
+                        color = "green" if exit_code == 0 else "red"
+                        h_text.append(f"  {badge} {output}\n", style=color)
+                table.add_row("Health Check", h_text)
+
         config = self.data.get("Config", {})
         cmd = config.get("Cmd") or self.data.get("Command")
         table.add_row("Command", " ".join(cmd) if isinstance(cmd, list) else str(cmd or "-"))

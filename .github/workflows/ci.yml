@@ -34,5 +34,5 @@ jobs:
       - name: Run Ruff Formatter Check
         run: uv run ruff format --check .
 
-      - name: Run Tests
-        run: uv run pytest -v tests/
+      - name: Run Tests with Coverage
+        run: uv run pytest -v --cov=dockpulse --cov-report=term-missing tests/

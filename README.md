@@ -82,7 +82,7 @@ dockpulse check
 
 ## CLI Commands
 
-DockPulse includes CLI subcommands for common operational tasks:
+DockPulse includes a fast CLI suite for routine Docker operations:
 
 ```bash
 # Launch the interactive terminal HUD (default)
@@ -91,14 +91,23 @@ dockpulse hud
 # List containers grouped by Compose project in a compact table
 dockpulse ps
 
-# Display snapshot resource statistics for active containers
+# Display snapshot resource statistics for active containers (--limit, --socket)
 dockpulse stats
+
+# View running processes inside a container (docker top)
+dockpulse top <container-name-or-id>
 
 # Stream demultiplexed logs for a specific container
 dockpulse logs <container-name-or-id>
 
-# Safely prune unused containers, networks, and dangling images
+# Manage Compose project stacks
+dockpulse compose ps
+dockpulse compose restart <project-name>
+dockpulse compose stop <project-name>
+
+# Safely preview and prune stopped containers
 dockpulse prune --dry-run
+dockpulse prune --force
 ```
 
 ---
