@@ -2,6 +2,7 @@
 
 from typer.testing import CliRunner
 
+from dockpulse import __version__
 from dockpulse.cli import app
 
 runner = CliRunner(env={"COLUMNS": "160"})
@@ -10,7 +11,19 @@ runner = CliRunner(env={"COLUMNS": "160"})
 def test_cli_version() -> None:
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
-    assert "dockpulse v0.1.0" in result.stdout
+    assert f"dockpulse v{__version__}" in result.stdout
+
+
+def test_cli_short_version_flag() -> None:
+    result = runner.invoke(app, ["-v"])
+    assert result.exit_code == 0
+    assert f"dockpulse v{__version__}" in result.stdout
+
+
+def test_cli_version_command() -> None:
+    result = runner.invoke(app, ["version"])
+    assert result.exit_code == 0
+    assert f"dockpulse v{__version__}" in result.stdout
 
 
 def test_cli_ps_demo() -> None:

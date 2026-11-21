@@ -17,7 +17,7 @@
 ---
 
 <p align="center">
-  <img src="docs/images/screenshot_main.png" alt="DockPulse Live Terminal Dashboard" width="100%" />
+  <img src="docs/images/dockpulse_demo.gif?raw=true" alt="DockPulse Live Terminal Dashboard and HUD Demo" width="100%" style="border-radius: 12px; box-shadow: 0 16px 36px rgba(0,0,0,0.4);" />
 </p>
 
 ---

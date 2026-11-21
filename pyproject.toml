@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dockpulse"
-version = "0.1.0"
+version = "0.1.1"
 description = "High-speed keyboard-driven terminal HUD and CLI for Docker and Compose"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -60,6 +60,7 @@ ignore = ["E501"]
 minversion = "8.0"
 testpaths = ["tests"]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 pythonpath = ["src"]
 
 [tool.coverage.run]

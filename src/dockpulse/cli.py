@@ -63,6 +63,12 @@ def main(
         _run_tui(socket_override=socket, demo=demo)
 
 
+@app.command("version")
+def version_command() -> None:
+    """Show version and exit."""
+    console.print(f"[bold cyan]dockpulse[/] v{__version__}")
+
+
 @app.command("hud")
 def hud_command(
     demo: Annotated[bool, typer.Option("--demo", help="Run with simulated microservices.")] = False,
